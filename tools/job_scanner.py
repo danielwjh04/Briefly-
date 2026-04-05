@@ -1,4 +1,26 @@
+import re
 import requests
+
+
+def _trim_desc(text: str, limit: int = 200) -> str:
+    if len(text) <= limit:
+        return text
+    # Try to cut at last sentence end within limit
+    cut = text[:limit]
+    last_stop = max(cut.rfind(". "), cut.rfind(".\n"))
+    if last_stop > 80:
+        return cut[:last_stop + 1]
+    return cut.rstrip() + "..."
+
+
+def _strip_html(text: str) -> str:
+    # Replace block-level tags with a space so words don't merge
+    text = re.sub(r"<(p|li|h[1-6]|div|br)[^>]*>", " ", text, flags=re.IGNORECASE)
+    # Remove remaining tags
+    text = re.sub(r"<[^>]+>", "", text)
+    # Collapse multiple spaces/newlines
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
 
 MCF_API_URL = "https://api.mycareersfuture.gov.sg/v2/jobs"
 
@@ -50,7 +72,7 @@ def search_jobs(keyword: str, limit: int = 10) -> list[dict]:
             "company": job.get("postedCompany", {}).get("name", "Unknown Company"),
             "salary": salary,
             "url": url,
-            "description": (job.get("description") or "")[:200].strip(),
+            "description": _trim_desc(_strip_html(job.get("description") or "")),
         })
 
     return jobs
