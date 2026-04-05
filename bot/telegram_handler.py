@@ -64,10 +64,25 @@ def _call_agnes(messages: list[dict]) -> str:
         return f"Agnes API error: {e}"
 
 
+def _split_message(text: str, limit: int = 4000) -> list[str]:
+    """Split text into chunks under `limit` chars, breaking on newlines then spaces."""
+    chunks = []
+    while len(text) > limit:
+        split_at = text.rfind("\n", 0, limit)
+        if split_at == -1:
+            split_at = text.rfind(" ", 0, limit)
+        if split_at == -1:
+            split_at = limit
+        chunks.append(text[:split_at].rstrip())
+        text = text[split_at:].lstrip()
+    if text:
+        chunks.append(text)
+    return chunks
+
+
 async def _safe_reply(message, text: str) -> None:
     """Send a reply, splitting on Telegram's 4096-char limit and falling back to plain text on Markdown errors."""
-    chunks = [text[i:i + 4000] for i in range(0, len(text), 4000)]
-    for chunk in chunks:
+    for chunk in _split_message(text):
         try:
             await message.reply_text(chunk, parse_mode="Markdown")
         except Exception:
@@ -551,8 +566,7 @@ async def send_reminder_brief(app, company: str, role: str, chat_id: int):
     brief = await loop.run_in_executor(None, _call_agnes, messages)
 
     full_text = f"*Interview Reminder — {company} ({role})*\n\n{brief}"
-    chunks = [full_text[i:i + 4000] for i in range(0, len(full_text), 4000)]
-    for chunk in chunks:
+    for chunk in _split_message(full_text):
         try:
             await app.bot.send_message(chat_id=chat_id, text=chunk, parse_mode="Markdown")
         except Exception:
