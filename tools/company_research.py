@@ -1,5 +1,9 @@
+import os
 import requests
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DDGO_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -52,6 +56,10 @@ def get_github_activity(company_github_handle: str) -> str:
 
     url = f"https://api.github.com/orgs/{company_github_handle}/repos?sort=updated&per_page=10"
     headers = {"Accept": "application/vnd.github+json"}
+    
+    github_token = os.getenv("GITHUB_TOKEN")
+    if github_token:
+        headers["Authorization"] = f"token {github_token}"
 
     try:
         resp = requests.get(url, headers=headers, timeout=10)
